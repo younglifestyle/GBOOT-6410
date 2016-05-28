@@ -9,6 +9,8 @@
 #define TWRPH0 0xf
 #define TWRPH1 0x7
 
+#define PAGE_SIZE 2048
+
 void select_chip()
 {
 	NFCONT &= ~(1 << 1);
@@ -69,9 +71,9 @@ void nand_init()
 	reset();
 }
 
-void NF_Page_Read(unsigned long addr, unsigned char *buff)
+void NF_Page_Read(unsigned long addr, unsigned char *buff, int size)
 {
-	int i;
+	int i, len;
 	
 	// 选中NF
 	select_chip();
@@ -97,8 +99,20 @@ void NF_Page_Read(unsigned long addr, unsigned char *buff)
 	// 等待RnB信号
 	wait_RnB();
 	
+	/* 判断出一个合适的size */
+	if(size > PAGE_SIZE)
+		len = size > PAGE_SIZE*4 ? PAGE_SIZE*4 : size;
+	else if(size < PAGE_SIZE)
+		len = size;
+	else
+		len = PAGE_SIZE;
+	
+//	len = size > PAGE_SIZE ? size : PAGE_SIZE;
+//	if(len > PAGE_SIZE*4)
+//		len = PAGE_SIZE*4;
+	
 	// 读取数据
-	for(i=0; i < 1024*2; i++)
+	for(i=0; i < len; i++)
 	{
 		*buff++ = NFDATA;
 	}
@@ -110,21 +124,32 @@ void NF_Page_Read(unsigned long addr, unsigned char *buff)
 void copy_2ddr(unsigned long nand_start, unsigned char *buff, int size)
 {
 	unsigned long i;
+	int len;
 	
-	for(i = (nand_start >> 11); size > 0;)
+	/* NF前4页需要按照2K来读取 */
+	for(i = (nand_start >> 11); size > 0 && i < 4;)
 	{
-		NF_Page_Read(i, buff);
+		NF_Page_Read(i, buff, PAGE_SIZE);
 		buff += 2048;
 		size -= 2048;
+		i++;
+	}
+	
+	/* NF除开前4页, 其余的每页为8K */
+	for(i++; size > 0;)
+	{
+		NF_Page_Read(i, buff, PAGE_SIZE*4);
+		buff += PAGE_SIZE*4;
+		size -= PAGE_SIZE*4;
 		i++;
 	}
 }
 
 
-void NF_Page_Write(unsigned long addr, unsigned char *buff)
+void NF_Page_Write(unsigned long addr, unsigned char *buff, int size)
 {
 	int i;
-	int ret;
+	int ret, len;
 	
 	// 选中NF
 	select_chip();
@@ -144,8 +169,20 @@ void NF_Page_Write(unsigned long addr, unsigned char *buff)
 	send_addr((addr >> 8) & (0xFF));
 	send_addr((addr >> 16) & (0xFF));
 	
+	/* 判断出一个合适的size */
+	if(size > PAGE_SIZE)
+		len = size > PAGE_SIZE*4 ? PAGE_SIZE*4 : size;
+	else if(size < PAGE_SIZE)
+		len = size;
+	else
+		len = PAGE_SIZE;
+	
+//	len = size > PAGE_SIZE ? size : PAGE_SIZE;
+//	if(len > PAGE_SIZE*4)
+//		len = PAGE_SIZE*4;	
+	
 	// 写入数据
-	for(i=0; i < 1024*2; i++)
+	for(i=0; i < len; i++)
 	{
 		NFDATA = *buff++;
 	}
