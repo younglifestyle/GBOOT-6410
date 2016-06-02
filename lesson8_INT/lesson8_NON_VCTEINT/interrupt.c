@@ -4,13 +4,15 @@
 #define VIC0VECTADDR 		(*(volatile unsigned long *)0x71200100)
 #define EINT0PEND 			(*(volatile unsigned long *)0x7F008924)
 #define VIC0ADDRESS 		(*(volatile unsigned long *)0x71200F00)
-
+#define VIC0IRQSTATUS 	(*(volatile unsigned long *)0x71200000)
+ 
 void handle_int()
 {
 		int val = EINT0PEND&((1 << 0) | (1 << 1) | (1 << 2) | (1 << 3));
 
 		EINT0PEND = ~0x0;
-		
+//		VIC0IRQSTATUS = ~0x0;  //  这里不清楚是写1还是写0清除状态,上一步已经清除了中断		
+
 		/* 处理函数 */
 		switch(val)
 		{

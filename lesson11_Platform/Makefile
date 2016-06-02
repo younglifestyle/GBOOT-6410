@@ -3,27 +3,26 @@ OBJS := start.o mem.o main.o dev/dev.o lib/lib.o
 CFLAGS = -fno-builtin -I$(shell pwd)/include
 export CFLAGS
 
-gbbot.bin : gboot.elf
-	arm-linux-objcopy -O binary gboot.elf gboot.bin
-
-gboot.elf : $(OBJS)
+gboot.bin : $(OBJS)
 	arm-linux-ld -Tgboot.lds -o gboot.elf $^
-
+	arm-linux-objcopy -O binary -S gboot.elf $@
 	
 %.o : %.S
-	arm-linux-gcc -g -c $^
+	arm-linux-gcc -g -c $<
 
 %.o : %.c
-	arm-linux-gcc -g $(CFLAGS) -c $^
+	arm-linux-gcc -g $(CFLAGS) -c $<
 
-lib/lib.o :
-	make -C lib all
+.PHONY : lib/lib.o
+lib/lib.o:
+	cd lib; make; cd ..
 
-dev/dev.o :
-	make -C dev all
+.PHONY : dev/dev.o
+dev/dev.o:
+	cd dev; make; cd ..
 
-.PHONY: clean
+.PHONY : clean
 clean:
 	rm -f *.o *.elf *.bin
-	make -C lib clean
-	make -C dev clean 
+	make clean -C lib
+	make clean -C dev
